@@ -1,0 +1,9 @@
+aiogram
+ytmusicapi
+yt-dlp
+python-dotenv
+requests[socks]
+aiohttp-socks
+spotifyscraper
+yandex-music
+static-ffmpeg
