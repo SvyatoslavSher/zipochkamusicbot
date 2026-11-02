@@ -2,6 +2,7 @@ import os
 import glob
 import uuid
 import subprocess
+import platform
 from yt_dlp import YoutubeDL
 
 from config import DOWNLOAD_DIR, YOUTUBE_PROXY, FFMPEG_LOCATION, COOKIES_PATH, logger
@@ -26,12 +27,11 @@ def download_audio(video_id: str) -> str:
     ydl_opts = {
         "format": "bestaudio/best",
         "proxy": YOUTUBE_PROXY,
+        "ffmpeg_location": FFMPEG_LOCATION,
         "writethumbnail": True,
         "cookiefile": COOKIES_PATH,
-        # web_creator лучше всего работает с cookies для обхода возрастных ограничений.
-        # tv_embedded и default добавлены как запасные варианты.
         "extractor_args": {"youtube": {"player_client": ["web_creator", "tv_embedded", "default"]}},
-        "remote_components": "ejs:github",  # для n challenge (нужен deno)
+        "remote_components": "ejs:github",
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -49,16 +49,14 @@ def download_audio(video_id: str) -> str:
             ydl.download([url])
     except Exception as e:
         error_msg = str(e)
-        # Проверяем, связана ли ошибка с возрастом
         if "Sign in to confirm your age" in error_msg or "age-restricted" in error_msg.lower():
             raise AgeRestrictedError("Видео имеет возрастное ограничение")
-        raise e  # Пробрасываем другие ошибки дальше
+        raise e
 
     mp3_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.mp3")
     if not os.path.exists(mp3_path):
         raise RuntimeError("MP3 не был создан после загрузки")
     
-    # Логируем размер файла
     size_mb = round(os.path.getsize(mp3_path) / (1024 * 1024), 2)
     logger.info(f"Файл скачан: {size_mb} МБ")
     
@@ -66,12 +64,10 @@ def download_audio(video_id: str) -> str:
 
 
 def get_mp3_path(file_id: str) -> str:
-    """Возвращает путь к MP3-файлу по его file_id."""
     return os.path.join(DOWNLOAD_DIR, f"{file_id}.mp3")
 
 
 def get_thumb_path(file_id: str) -> str | None:
-    """Возвращает путь к скачанной обложке, если она есть."""
     for ext in ("webp", "jpg", "jpeg", "png"):
         candidate = os.path.join(DOWNLOAD_DIR, f"{file_id}.{ext}")
         if os.path.exists(candidate):
@@ -87,7 +83,10 @@ def embed_cover(mp3_path: str, thumb_path: str) -> str | None:
     if not thumb_path or not os.path.exists(thumb_path):
         return None
 
-    ffmpeg_exe = os.path.join(FFMPEG_LOCATION, "ffmpeg.exe")
+    # Определяем имя исполняемого файла в зависимости от ОС
+    ffmpeg_name = "ffmpeg.exe" if platform.system() == "Windows" else "ffmpeg"
+    ffmpeg_exe = os.path.join(FFMPEG_LOCATION, ffmpeg_name)
+
     base = os.path.splitext(mp3_path)[0]
     png_path = base + "_cover.png"
     jpg_path = base + "_cover.jpg"
@@ -97,6 +96,7 @@ def embed_cover(mp3_path: str, thumb_path: str) -> str | None:
         ffmpeg_exe, "-y", "-i", thumb_path, png_path
     ], capture_output=True, text=True)
     if r1.returncode != 0:
+        logger.error(f"Ошибка ffmpeg (шаг 1): {r1.stderr}")
         return None
 
     # Шаг 2: PNG -> JPEG (mjpeg)
@@ -105,6 +105,7 @@ def embed_cover(mp3_path: str, thumb_path: str) -> str | None:
         "-c:v", "mjpeg", "-q:v", "2", jpg_path
     ], capture_output=True, text=True)
     if r2.returncode != 0:
+        logger.error(f"Ошибка ffmpeg (шаг 2): {r2.stderr}")
         return None
 
     # Шаг 3: Встраиваем JPEG в MP3
@@ -123,11 +124,11 @@ def embed_cover(mp3_path: str, thumb_path: str) -> str | None:
         tmp_mp3,
     ], capture_output=True, text=True)
     if r3.returncode != 0:
+        logger.error(f"Ошибка ffmpeg (шаг 3): {r3.stderr}")
         return None
 
     os.replace(tmp_mp3, mp3_path)
 
-    # Удаляем только PNG, JPEG оставляем для Telegram
     if os.path.exists(png_path):
         os.remove(png_path)
 
@@ -135,10 +136,6 @@ def embed_cover(mp3_path: str, thumb_path: str) -> str | None:
 
 
 def cleanup(file_id: str) -> None:
-    """
-    Удаляет все файлы, связанные с file_id:
-    основной mp3, обложки, промежуточные файлы.
-    """
     pattern = os.path.join(DOWNLOAD_DIR, f"*{file_id}*")
     for path in glob.glob(pattern):
         try:
@@ -148,7 +145,6 @@ def cleanup(file_id: str) -> None:
 
 
 def purge_downloads() -> None:
-    """Удаляет всё содержимое DOWNLOAD_DIR при старте бота."""
     for path in glob.glob(os.path.join(DOWNLOAD_DIR, "*")):
         try:
             os.remove(path)

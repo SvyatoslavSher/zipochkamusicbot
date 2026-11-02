@@ -7,3 +7,5 @@ aiohttp-socks
 spotifyscraper
 yandex-music
 static-ffmpeg
+static-ffmpeg
+ffmpeg-python

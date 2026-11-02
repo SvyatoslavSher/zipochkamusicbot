@@ -8,21 +8,17 @@ from ytmusicapi import YTMusic
 from config import YOUTUBE_PROXY, TELEGRAM_PROXY, SEARCH_LIMIT, logger
 
 
-# --- Сессия для площадок (INCY, с авторизацией) ---
-def _build_session(proxy: str) -> requests.Session:
-    session = requests.Session()
-    session.proxies = {"http": proxy, "https": proxy}
-    session.request = functools.partial(session.request, timeout=20)
-    return session
-
-
-# --- ytmusicapi (WARP, без авторизации) ---
+# --- Сессия для ytmusicapi ---
 def _build_ytmusic() -> YTMusic:
     session = requests.Session()
-    if YOUTUBE_PROXY:  # <-- проверка
+    if YOUTUBE_PROXY:
         session.proxies = {"http": YOUTUBE_PROXY, "https": YOUTUBE_PROXY}
     session.request = functools.partial(session.request, timeout=60)
-    return YTMusic(requests_session=session, location="US")
+    return YTMusic(
+        requests_session=session,
+        location="US"  # Пытаемся обойти региональные ограничения
+    )
+
 
 _yt = _build_ytmusic()
 
@@ -115,7 +111,9 @@ def get_spotify_link(artist: str, title: str) -> str | None:
     """Ищет трек на Spotify через SpotifyScraper (без API-ключа)."""
     try:
         from spotify_scraper import SpotifyClient
-        with SpotifyClient(proxy=TELEGRAM_PROXY) as client:
+        # Если на Windows используется INCY, передаем его. На Linux прокси нет.
+        proxy_arg = TELEGRAM_PROXY if TELEGRAM_PROXY else None
+        with SpotifyClient(proxy=proxy_arg) as client:
             results = client.search(f"{artist} {title}", types=("track",), limit=1)
             if results.tracks:
                 track = results.tracks[0]
@@ -166,7 +164,6 @@ def get_platform_links(artist: str, title: str) -> dict:
     """Собирает ссылки на трек с Spotify, SoundCloud и Yandex Music."""
     links = {}
 
-    # не работает
     #sp = get_spotify_link(artist, title)
     #if sp:
     #    links["Spotify"] = sp

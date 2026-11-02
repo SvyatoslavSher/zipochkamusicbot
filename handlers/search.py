@@ -23,7 +23,7 @@ from services.downloader import (
     embed_cover,
     cleanup,
     purge_downloads,
-    AgeRestrictedError,  # <-- Импортируем исключение для возрастных видео
+    AgeRestrictedError,
 )
 
 router = Router()
@@ -35,7 +35,7 @@ _user_queries: dict[int, str] = {}
 # Очистка папки загрузок при старте
 purge_downloads()
 
-BOT_LINK = "https://t.me/zipochkamusic_bot"
+
 BOT_LINK_TEXT = "Бот для поиска музыки @zipochkamusic_bot"
 USER_ERROR = "Не получилось найти трек, пожалуйста попробуйте позже"
 AGE_ERROR = "🚫 Этот трек имеет возрастное ограничение на YouTube. К сожалению, бот не может его скачать. Попробуйте найти другой трек или версию."
@@ -150,7 +150,7 @@ async def handle_yt_regular_search(callback: CallbackQuery):
 
 def _build_caption(links: dict) -> str:
     """Формирует подпись: ссылка на бота + список площадок."""
-    lines = [f'🎧 <a href="{BOT_LINK}">{BOT_LINK_TEXT}</a>', ""]
+    lines = [f'🎧 <a>{BOT_LINK_TEXT}</a>', ""]
 
     if links:
         lines.append("Трек на других площадках:")
