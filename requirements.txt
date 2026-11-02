@@ -1,6 +1,6 @@
 aiogram
 ytmusicapi
-yt-dlp
+yt-dlp[default]
 python-dotenv
 requests[socks]
 aiohttp-socks
