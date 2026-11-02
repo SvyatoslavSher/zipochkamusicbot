@@ -48,7 +48,7 @@ else:
 if IS_WINDOWS:
     FFMPEG_LOCATION = r"D:\Programs\ffmpeg-9.0.2-essentials_build\bin"
 else:
-    FFMPEG_LOCATION = "/usr/bin"  # или None, если ffmpeg установлен в PATH
+    FFMPEG_LOCATION = os.path.join(os.path.dirname(__file__), "ffmpeg", "bin")
 
 # --- Путь к файлу cookies ---
 # Файл должен лежать в корне проекта.
