@@ -13,7 +13,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import logger
 from services.search import (
     search_tracks,
-    get_platform_links,
     search_youtube_regular,
 )
 from services.downloader import (
@@ -34,7 +33,6 @@ _user_queries: dict[int, str] = {}
 
 # Очистка папки загрузок при старте
 purge_downloads()
-
 
 BOT_LINK_TEXT = "Бот для поиска музыки @zipochkamusic_bot"
 USER_ERROR = "Не получилось найти трек, пожалуйста попробуйте позже"
@@ -148,19 +146,6 @@ async def handle_yt_regular_search(callback: CallbackQuery):
     )
 
 
-def _build_caption(links: dict) -> str:
-    """Формирует подпись: ссылка на бота + список площадок."""
-    lines = [f'🎧 <a>{BOT_LINK_TEXT}</a>', ""]
-
-    if links:
-        lines.append("Трек на других площадках:")
-        for name, url in links.items():
-            if url:
-                lines.append(f"• <a href='{url}'>{name}</a>")
-
-    return "\n".join(lines)
-
-
 @router.callback_query(F.data.startswith("pick:"))
 async def handle_pick(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -206,21 +191,16 @@ async def handle_pick(callback: CallbackQuery):
                 None, embed_cover, mp3_path, thumb_path
             )
 
-        # 4. Ищем ссылки на площадки
-        platform_links = await loop.run_in_executor(
-            None, get_platform_links, artists, title
-        )
-        yt_music_url = f"https://music.youtube.com/watch?v={video_id}"
-        all_links = {"YouTube Music": yt_music_url, **platform_links}
-        caption = _build_caption(all_links)
-
-        # 5. Удаляем "Загружаю..." и отправляем аудио
+        # 4. Удаляем "Загружаю..." и отправляем аудио
         await status_msg.delete()
 
         audio_file = FSInputFile(mp3_path, filename=f"{artists} - {title}.mp3")
         thumbnail_file = None
         if jpeg_thumb_path and os.path.exists(jpeg_thumb_path):
             thumbnail_file = FSInputFile(jpeg_thumb_path)
+
+        # Подпись: просто текст, Telegram сам сделает @username кликабельным
+        caption = f"🎧 {BOT_LINK_TEXT}"
 
         await callback.message.answer_audio(
             audio=audio_file,
