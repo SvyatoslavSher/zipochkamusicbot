@@ -5,11 +5,12 @@ WORKDIR /app
 # pypi.org иногда отвечает медленно с нод — увеличиваем таймаут и число повторов pip
 ENV PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10
 
-# --- УСТАНОВКА DENO (JS-рантайм для yt-dlp) ---
-# Устанавливаем curl и unzip, если их нет, и скачиваем бинарник Deno
+# --- УСТАНОВКА DENO (JS-рантайм для yt-dlp) И FFMPEG ---
+# Устанавливаем curl, unzip и ffmpeg (включая ffprobe)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/deno.zip "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip" \
     && unzip /tmp/deno.zip -d /usr/local/bin \
