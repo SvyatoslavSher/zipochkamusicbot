@@ -6,7 +6,6 @@ WORKDIR /app
 ENV PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10
 
 # --- УСТАНОВКА DENO (JS-рантайм для yt-dlp) И FFMPEG ---
-# Устанавливаем curl, unzip и ffmpeg (включая ffprobe)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
@@ -18,18 +17,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && chmod +x /usr/local/bin/deno \
     && deno --version
 
-# Добавляем /usr/local/bin в PATH на всякий случай (обычно он и так там)
 ENV PATH="/usr/local/bin:${PATH}"
-# -------------------------------------------------
 
 COPY requirements.txt requirements.txt
+
 # Очищаем BOM и невидимые символы из requirements.txt
 RUN sed -i 's/^\xEF\xBB\xBF//' requirements.txt 2>/dev/null || true && \
     sed -i 's/^\xFF\xFE//' requirements.txt 2>/dev/null || true && \
     sed -i 's/^\xFE\xFF//' requirements.txt 2>/dev/null || true && \
     tr -d '\r\0' < requirements.txt > requirements.txt.tmp && mv requirements.txt.tmp requirements.txt 2>/dev/null || true
-# Проверяем, что requirements.txt скопирован
+
 RUN cat requirements.txt && echo '--- Requirements.txt содержимое выше ---'
+
 # Устанавливаем зависимости из requirements.txt
 RUN set -e && \
     pip_install_retry() { \
@@ -48,7 +47,6 @@ RUN set -e && \
     else \
         while IFS= read -r line || [ -n "$line" ]; do \
             [ -z "$line" ] && continue; \
-            # Очищаем BOM и невидимые символы, обрезаем пробелы \
             line=$(echo "$line" | sed 's/^\xEF\xBB\xBF//' | sed 's/^\xFF\xFE//' | sed 's/^\xFE\xFF//' | tr -d '\r\0' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'); \
             [ -z "$line" ] && continue; \
             case "$line" in \
@@ -62,7 +60,6 @@ RUN set -e && \
             if echo "$line" | grep -qiE '(python-dotenv|tgcrypto).*=='; then \
                 if ! pip_install_retry "$line"; then \
                     echo "WARNING: Не удалось установить $line (возможно несуществующая версия или сеть)"; \
-                    # Пробуем установить без версии \
                     pkg_name=$(echo "$line" | sed 's/[<>=!].*//' | xargs); \
                     echo "Пробуем установить $pkg_name без версии..."; \
                     pip_install_retry "$pkg_name" || echo "WARNING: Не удалось установить $pkg_name даже без версии"; \
@@ -78,21 +75,21 @@ RUN set -e && \
             fi; \
         done < requirements.txt; \
     fi && \
-    echo 'Установка завершена' && \
-    echo '=== Проверка установленных пакетов ===' && \
-    (pip list 2>/dev/null | grep -E '(aiogram|dotenv|telegram|requests|supabase)' || echo 'WARNING: Некоторые модули не найдены') && \
-    echo '=== Проверка python-dotenv ===' && \
-    (pip show python-dotenv >/dev/null 2>&1 && echo '✅ python-dotenv установлен' || echo '❌ python-dotenv НЕ установлен')
+    echo 'Установка завершена'
 
-# --- ГАРАНТИРОВАННАЯ УСТАНОВКА yt-cookies ---
-# Добавляем отдельную команду на случай, если парсинг requirements.txt его пропустил
-RUN pip install --no-cache-dir yt-cookies
+# --- ПРИНУДИТЕЛЬНАЯ УСТАНОВКА yt-cookies С ПРОВЕРКОЙ ---
+# Устанавливаем отдельно, чтобы гарантировать наличие
+RUN echo "=== ПРИНУДИТЕЛЬНАЯ УСТАНОВКА yt-cookies ===" && \
+    pip install --no-cache-dir yt-cookies || (echo "❌ ОШИБКА: Не удалось установить yt-cookies" && exit 1) && \
+    echo "✅ yt-cookies установлен" && \
+    python -c "import yt_cookies; print('✅ Импорт yt_cookies работает')" || (echo "❌ ОШИБКА: yt_cookies не импортируется" && exit 1)
 
 # Проверяем, что aiogram 3.x установлен правильно
-RUN python -c 'from aiogram.client.default import DefaultBotProperties; print("✅ aiogram 3.x установлен правильно")' 2>/dev/null || echo '⚠️ Проверка aiogram 3.x не прошла, но это может быть нормально'
+RUN python -c 'from aiogram.client.default import DefaultBotProperties; print("✅ aiogram 3.x установлен правильно")' 2>/dev/null || echo '⚠️ Проверка aiogram 3.x не прошла'
+
 RUN pip cache purge || true
 
-# Проверка python-dotenv (указан в requirements.txt без версии)
+# Проверка python-dotenv
 RUN python -c 'import dotenv' 2>/dev/null || (pip install --no-cache-dir python-dotenv>=1.0.0 && echo '✅ python-dotenv установлен автоматически')
 
 # Очищаем pip кеш
@@ -101,7 +98,7 @@ RUN pip cache purge || true
 # Копируем код приложения
 COPY . .
 
-# Директория для постоянных данных: БД, файлы состояния, логи.
+# Директория для постоянных данных
 ENV DATA_DIR=/app/data
 RUN mkdir -p /app/data && chmod 777 /app/data
 RUN chown -R $(id -u):$(id -g) /app/data 2>/dev/null || chown -R 1000:1000 /app/data || true
