@@ -3,7 +3,6 @@ import glob
 import uuid
 import subprocess
 import platform
-import yt_cookies
 from yt_dlp import YoutubeDL
 
 
@@ -25,9 +24,6 @@ def download_audio(video_id: str) -> str:
     file_id = uuid.uuid4().hex
     out_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
     url = f"https://music.youtube.com/watch?v={video_id}"
-
-    #Получаем куки
-    cookies_data = yt_cookies.youtube()
 
     ydl_opts = {
         "format": "bestaudio/best",
