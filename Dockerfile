@@ -31,7 +31,6 @@ RUN sed -i 's/^\xEF\xBB\xBF//' requirements.txt 2>/dev/null || true && \
 # Проверяем, что requirements.txt скопирован
 RUN cat requirements.txt && echo '--- Requirements.txt содержимое выше ---'
 # Устанавливаем зависимости из requirements.txt
-# Пропускаем aiogram если он есть - установим правильную версию отдельно
 RUN set -e && \
     pip_install_retry() { \
         pkg="$1"; attempt=1; \
@@ -85,14 +84,16 @@ RUN set -e && \
     echo '=== Проверка python-dotenv ===' && \
     (pip show python-dotenv >/dev/null 2>&1 && echo '✅ python-dotenv установлен' || echo '❌ python-dotenv НЕ установлен')
 
+# --- ГАРАНТИРОВАННАЯ УСТАНОВКА yt-cookies ---
+# Добавляем отдельную команду на случай, если парсинг requirements.txt его пропустил
+RUN pip install --no-cache-dir yt-cookies
+
 # Проверяем, что aiogram 3.x установлен правильно
 RUN python -c 'from aiogram.client.default import DefaultBotProperties; print("✅ aiogram 3.x установлен правильно")' 2>/dev/null || echo '⚠️ Проверка aiogram 3.x не прошла, но это может быть нормально'
 RUN pip cache purge || true
 
 # Проверка python-dotenv (указан в requirements.txt без версии)
 RUN python -c 'import dotenv' 2>/dev/null || (pip install --no-cache-dir python-dotenv>=1.0.0 && echo '✅ python-dotenv установлен автоматически')
-# Проверяем, что python-dotenv установлен (используется в коде)
-RUN python -c 'import dotenv' 2>/dev/null || (echo '⚠️ python-dotenv не установлен, устанавливаем автоматически...' && pip install --no-cache-dir python-dotenv>=1.0.0 && python -c 'import dotenv' && echo '✅ python-dotenv установлен' || echo '❌ Не удалось установить python-dotenv')
 
 # Очищаем pip кеш
 RUN pip cache purge || true
@@ -101,12 +102,9 @@ RUN pip cache purge || true
 COPY . .
 
 # Директория для постоянных данных: БД, файлы состояния, логи.
-# Монтируется как Docker volume — данные сохраняются при перезапуске.
-# В коде бота используйте: import os; DATA_DIR = os.getenv('DATA_DIR', '/app/data')
 ENV DATA_DIR=/app/data
 RUN mkdir -p /app/data && chmod 777 /app/data
 RUN chown -R $(id -u):$(id -g) /app/data 2>/dev/null || chown -R 1000:1000 /app/data || true
-
 
 # Определяем точку входа
 CMD ["python", "app.py"]

@@ -8,5 +8,4 @@ spotifyscraper
 yandex-music
 static-ffmpeg
 static-ffmpeg
-ffmpeg-python
 yt-cookies

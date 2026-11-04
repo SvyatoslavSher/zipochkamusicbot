@@ -6,6 +6,7 @@ import platform
 import yt_cookies
 from yt_dlp import YoutubeDL
 
+
 from config import DOWNLOAD_DIR, YOUTUBE_PROXY, FFMPEG_LOCATION, COOKIES_PATH, logger
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
