@@ -51,8 +51,11 @@ else:
     FFMPEG_LOCATION = "/usr/bin"
 
 # --- Путь к файлу cookies ---
-# Файл должен лежать в корне проекта.
-COOKIES_PATH = os.path.join(os.path.dirname(__file__), "cookies.txt")
+COOKIES_PATH = "cookies.txt"
+cookies_content = os.getenv("YOUTUBE_COOKIES")
+if cookies_content:
+    with open(COOKIES_PATH, "w", encoding="utf-8") as f:
+        f.write(cookies_content)
 
 # --- Лимит поиска ---
 SEARCH_LIMIT = 10

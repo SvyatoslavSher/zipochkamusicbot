@@ -77,20 +77,6 @@ RUN set -e && \
     fi && \
     echo 'Установка завершена'
 
-# --- УСТАНОВКА И ИСПРАВЛЕНИЕ ИМЕНИ yt-cookies ---
-RUN echo "=== УСТАНОВКА yt-cookies ===" && \
-    python -m pip install --no-cache-dir yt-cookies && \
-    echo "=== ПОИСК И ПЕРЕИМЕНОВАНИЕ ПАКЕТА ===" && \
-    # Переходим в директорию с пакетами
-    cd /usr/local/lib/python3.12/site-packages && \
-    # Ищем папку или файл, который начинается с yt (но не yt_cookies)
-    # Если находим папку yt-cookies, переименовываем в yt_cookies
-    if [ -d "yt-cookies" ]; then mv "yt-cookies" "yt_cookies"; fi && \
-    if [ -d "yt_cookies" ]; then echo "✅ Папка yt_cookies найдена/создана"; fi && \
-    # Проверяем импорт
-    python -c "import yt_cookies; print('✅ Импорт yt_cookies работает')" || (echo "❌ ОШИБКА: yt_cookies все еще не импортируется" && exit 1)
-# -------------------------------------------------
-    
 # Проверяем, что aiogram 3.x установлен правильно
 RUN python -c 'from aiogram.client.default import DefaultBotProperties; print("✅ aiogram 3.x установлен правильно")' 2>/dev/null || echo '⚠️ Проверка aiogram 3.x не прошла'
 

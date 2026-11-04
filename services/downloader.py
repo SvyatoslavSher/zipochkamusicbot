@@ -26,14 +26,15 @@ def download_audio(video_id: str) -> str:
     out_template = os.path.join(DOWNLOAD_DIR, f"{file_id}.%(ext)s")
     url = f"https://music.youtube.com/watch?v={video_id}"
 
+    #Получаем куки
+    cookies_data = yt_cookies.youtube()
+
     ydl_opts = {
         "format": "bestaudio/best",
         "proxy": YOUTUBE_PROXY,
         "ffmpeg_location": FFMPEG_LOCATION,
         "writethumbnail": True,
-        "http_headers": {
-        "Cookie": yt_cookies.youtube()
-        },
+        "cookiefile": COOKIES_PATH,
         "extractor_args": {"youtube": {"player_client": ["web_creator", "tv_embedded", "default"]}},
         "remote_components": "ejs:github",
         "postprocessors": [
